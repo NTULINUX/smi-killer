@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Re-written in GNU Bash by Alec Ari
+
+if [[ "${EUID}" != "0" ]] ; then
+	echo "This script must be run with superuser permissions."
+	exit 1
+fi
+
+if [[ ! -f "${PWD}/smi-killer.ko" ]] ; then
+	echo "smi-killer.ko not found. Exiting."
+	exit 1
+fi
+
+while [[ "${#}" -gt "0" ]] ; do
+	argument="${1}"
+	case "${argument}" in
+		*)
+			;;
+	esac
+	shift
+done
+
+echo "Unconditionally unloading smi-killer..."
+rmmod -f "smi-killer.ko"
+
+# If hal_smi_masked_bits is not set, use default
+if [[ "${argument}" == "hal_smi_masked_bits="* ]] ; then
+	argument_stripped="${argument//hal_smi_masked_bits=/}"
+	echo "Using user specified value of ${argument_stripped} to set SMI."
+	SMI_MASKED_BITS="${argument_stripped}"
+else
+	echo "Using default value 0x1 to set SMI."
+	SMI_MASKED_BITS="0x1"
+fi
+
+insmod "${PWD}/smi-killer.ko" hal_smi_masked_bits="${SMI_MASKED_BITS}" || \
+	{
+		echo "${CMDNAME}: insmod ${MODULEDIR}/${MODULENAME} failed" ;
+		exit 1 ;
+	}
+
+exit 0
